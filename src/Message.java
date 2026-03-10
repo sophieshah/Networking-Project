@@ -61,14 +61,15 @@ public class Message
         return buffer.array();
     }
 
-    public Message unpack(InputStream message)
+    public static Message unpack(InputStream message)
     {
         byte[] byteLength = message.readNBytes(4);
-        this.length = ByteBuffer.wrap(byteLength).getInt();
+        int length = ByteBuffer.wrap(byteLength).getInt();
 
-        this.type = message.readNBytes(1)[0];
+        byte type = message.readNBytes(1)[0];
 
-        int payloadLength = this.length - 1;
+        int payloadLength = length - 1;
+        byte[] payload;
         if (payloadLength > 0)
         {
             this.payload = message.readNBytes(payloadLength);
@@ -81,7 +82,7 @@ public class Message
         return new Message(MessageType.values()[type], payload);
     }
 
-    // For have, butfield, request, and piece
+    // For have, bitfield, request, and piece
     public int getPieceIndex()
     {
         return ByteBuffer.wrap(payload).getInt();
