@@ -100,7 +100,7 @@ public class MessageHandler{
 
         byte[] pieceData = loadPiece(pieceIndex);
 
-        ByteBuffer buffer = ByteBuffer.allocate(4+ pieceData.length);
+        ByteBuffer buffer = ByteBuffer.allocate(4 + pieceData.length);
         buffer.putInt(pieceIndex);
         buffer.put(pieceData);
 

@@ -6,7 +6,7 @@ public class ConnectionHandler implements Runnable{
     private Socket serverSocket;
     public OutputStream out;
     private peerProcess peer;
-    int peerID;
+    int peerId;
 
     public ConnectionHandler(Socket serverSocket) {
         this.serverSocket = serverSocket;
@@ -43,12 +43,12 @@ public class ConnectionHandler implements Runnable{
             InputStream in = serverSocket.getInputStream();
             OutputStream out = serverSocket.getOutputStream();
 
-            HandshakeMessage fromHandshake = new HandshakeMessage(peerID);
+            HandshakeMessage fromHandshake = new HandshakeMessage(peerId);
             out.write(fromHandshake.toByteArray());
             HandshakeMessage toHandshake = HandshakeMessage.unpack(in);
-            int peerID = toHandshake.getPeerID();
+            int peerId = toHandshake.getPeerID();
 
-            System.out.println("Handshake completed with Peer " + peerID);
+            System.out.println("Handshake completed with Peer " + peerId);
 
             byte[] bitfieldPayload = getBitfieldPayload();
             Message bitfieldMessage = new Message(Message.MessageType.BITFIELD, bitfieldPayload);
