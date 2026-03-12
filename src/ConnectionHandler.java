@@ -55,8 +55,8 @@ public class ConnectionHandler implements Runnable{
             out.write(bitfieldMessage.toByteArray());
 
             // Have to handle logging 
-            
-            MessageHandler message = new MessageHandler(in, out);
+
+            MessageHandler message = new MessageHandler(in, out, peer);
             message.handleMessage();
         } 
         catch (Exception e)
