@@ -1,12 +1,19 @@
-package src;
-import src.Message;
-import src.ConnectionHandler;
-import java.util.Random;
+import java.io.*;
+import java.net.*;
+import java.util.*;
 
 public class MessageHandler{
     boolean isInterested;
     boolean isChoked;
+
+    private InputStream in;
+    private OutputStream out;
     
+    public MessageHandler(InputStream in, OutputStream out) {
+        this.in = in;
+        this.out = out;
+    }
+
     private void handleMessage() throws IOException {
         while(true){
             Message msg = Message.unpack(in);
