@@ -4,8 +4,6 @@ import java.util.*;
 import java.nio.file.*;
 
 
-
-
 public class peerProcess {
     int peerId;
 
@@ -16,7 +14,7 @@ public class peerProcess {
     String fileName;
     int fileSize;
     int pieceSize;
-    int numPieces;
+    float numPieces;
 
     int curPort;
     String curHost;
@@ -24,7 +22,6 @@ public class peerProcess {
 
     // holds all the info from PeerInfo.cfg
     List<String[]> peerInfoList = new ArrayList<>();
-
     int[] bitfield;
 
     public peerProcess(int peerId){
@@ -43,7 +40,7 @@ public class peerProcess {
             fileName = Cfg.getProperty("FileName");
             fileSize = Integer.parseInt(Cfg.getProperty("FileSize"));
             pieceSize = Integer.parseInt(Cfg.getProperty("PieceSize"));
-            numPieces = (int)Math.ceil((double)fileSize / pieceSize);
+            numPieces = (float) fileSize / pieceSize;
             bitfield = new int[numPieces];
         } catch (Exception e) {
             e.printStackTrace();
@@ -54,7 +51,6 @@ public class peerProcess {
         try(BufferedReader br = new BufferedReader(new FileReader("PeerInfo.cfg"))){
             String line;
 
-
             while((line = br.readLine()) != null){
                 String[] vars = line.split("\\s+");
                
@@ -63,22 +59,23 @@ public class peerProcess {
                 int listeningPort = Integer.parseInt(vars[2]);
                 int hasFile = Integer.parseInt(vars[3]); //1 is yes 0 is no
 
-
                 //make subdir
                 String dirName = "peer_" + id;
                 Files.createDirectories(Paths.get(dirName));
-                
+               
                 if(id == this.peerId){
                     curPort = listeningPort;
                     curHost = hostName;
                     curHasFile = hasFile;
                 }
 
+
                 peerInfoList.add(vars);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+
 
         if(curHasFile == 1){
             for(int i=0; i<bitfield.length; i++){
@@ -92,12 +89,14 @@ public class peerProcess {
         }
     }
 
+
     public void connectToPrevPeers(){
         for(String[] peer : peerInfoList){
             int id = Integer.parseInt(peer[0]);
             String hostName = peer[1];
             int listeningPort = peer[2];
         }
+
 
         if(id < this.peerId){
             try{
@@ -110,17 +109,16 @@ public class peerProcess {
 
 
     public void startSocket(String host, int listeningPort) throws IOException {
-            ServerSocket serverSocket = new ServerSocket(listeningPort);
-            System.out.println("server connected successfully");
+        ServerSocket serverSocket = new ServerSocket(listeningPort);
+        System.out.println("server connected successfully");
 
 
-            while(true) {
-                Socket clientSocket = serverSocket.accept();
-                System.out.println("client connected successfully");
+        while(true) {
+            Socket clientSocket = serverSocket.accept();
+            System.out.println("client connected successfully");
 
 
-                new Thread(new ConnectionHandler(clientSocket)).start();
-            }
+            new Thread(new ConnectionHandler(clientSocket)).start();
         }
     }
 
@@ -155,7 +153,5 @@ public class peerProcess {
 
 
         // create subdirectory for individual peers
-
-
     }
 }
