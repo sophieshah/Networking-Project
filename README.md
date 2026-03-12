@@ -10,3 +10,13 @@ important features of BitTorrent. In the following Protocol Description section,
 read the protocol description, which has been modified a little bit from the original 
 BitTorrent protocol. After reading the protocol description carefully, you must follow the 
 implementation specifics shown in the Implementation Specifics section. 
+
+## For Debugging
+```shell
+javac *.java
+```
+
+## For Running
+```shell
+java peerProcess 1001
+```

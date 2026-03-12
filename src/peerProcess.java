@@ -7,6 +7,7 @@ import java.nio.file.*;
 public class peerProcess {
     int peerId;
     private ServerSocket serverSocket;
+    List<ConnectionHandler> connections;
 
     //from common.cfg
     int neighbors;
@@ -93,9 +94,9 @@ public class peerProcess {
 
     public void connectToPrevPeers(){
         for(String[] peer : peerInfoList){
-            int id = Integer.parseInt(peer[0]);
+            int id = Integer.parseInt(peer[0].trim());
             String hostName = peer[1];
-            int listeningPort = Integer.parseInt(peer[2]);
+            int listeningPort = Integer.parseInt(peer[2].trim());
 
             if(id < this.peerId){
                 try{
@@ -133,7 +134,7 @@ public class peerProcess {
     }
 
     public static void main(String[] args) {
-        int peerId = Integer.parseInt(args[0]);
+        int peerId = Integer.parseInt(args[0].trim());
         peerProcess p = new peerProcess(peerId);
         
         // Read peerID from command line
