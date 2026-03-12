@@ -1,7 +1,7 @@
 package src;
 import src.Message;
 import src.ConnectionHandler;
-import Random;
+import java.util.Random;
 
 public class MessageHandler{
     boolean isInterested;
@@ -159,13 +159,13 @@ public class MessageHandler{
     private int selectRandomPiece() throws IOException{
         List<Integer> availablePieces = new ArrayList<>();
 
-        for(int i=0; <peer.numPieces; i++){
+        for(int i=0; i<peer.numPieces; i++){
             if(peer.bitfield[i] == 0 && remoteBitfield[i] == 1){
                 availablePieces.add(i);
             }
         }
         if(availablePieces.isEmpty()){
-            return -1
+            return -1;
         }
         
         Random r = new Random();
