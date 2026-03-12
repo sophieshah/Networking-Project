@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class ConnectionHandler {
+public class ConnectionHandler implements Runnable {
     private Socket serverSocket;
     int peerId;
 

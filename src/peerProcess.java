@@ -40,7 +40,7 @@ public class peerProcess {
             fileName = Cfg.getProperty("FileName");
             fileSize = Integer.parseInt(Cfg.getProperty("FileSize"));
             pieceSize = Integer.parseInt(Cfg.getProperty("PieceSize"));
-            numPieces = (float) fileSize / pieceSize;
+            numPieces = (int) Math.ceil((double) fileSize / pieceSize);
             bitfield = new int[numPieces];
         } catch (Exception e) {
             e.printStackTrace();
@@ -91,10 +91,12 @@ public class peerProcess {
 
 
     public void connectToPrevPeers(){
+        int id, listeningPort;
+        String hostName;
         for(String[] peer : peerInfoList){
-            int id = Integer.parseInt(peer[0]);
-            String hostName = peer[1];
-            int listeningPort = peer[2];
+            id = Integer.parseInt(peer[0]);
+            hostName = peer[1];
+            listeningPort = Integer.parseInt(peer[2]);
         }
 
 
