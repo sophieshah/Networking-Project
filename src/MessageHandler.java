@@ -1,20 +1,25 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.nio.ByteBuffer;
 
 public class MessageHandler{
     boolean isInterested;
     boolean isChoked;
+    int[] remoteBitfield;
 
     private InputStream in;
     private OutputStream out;
+
+    private peerProcess peer;
     
-    public MessageHandler(InputStream in, OutputStream out) {
+    public MessageHandler(InputStream in, OutputStream out, peerProcess peer) {
         this.in = in;
         this.out = out;
+        this.peer = peer;
     }
 
-    private void handleMessage() throws IOException {
+    public void handleMessage() throws IOException {
         while(true){
             Message msg = Message.unpack(in);
 
@@ -91,12 +96,12 @@ public class MessageHandler{
 
     private void handleRequest(Message msg) throws IOException {
         // read requested index, load piece, send piece msg
-        int pieceIdx = msg.getPieceIndex();
+        int pieceIndex = msg.getPieceIndex();
 
-        byte[] pieceData = loadPiece(pieceIdx);
+        byte[] pieceData = loadPiece(pieceIndex);
 
         ByteBuffer buffer = ByteBuffer.allocate(4+ pieceData.length);
-        buffer.putInt(pieceIdx);
+        buffer.putInt(pieceIndex);
         buffer.put(pieceData);
 
         Message pieceMsg = new Message(Message.MessageType.PIECE, buffer.array());
@@ -106,12 +111,12 @@ public class MessageHandler{
 
     private void handlePiece(Message msg) throws IOException {
         //save piece, update bitfield(savePiece), send have msg(sendHaveToNeighbors), request another piece
-        int pieceIdx = msg.getPieceIndex();
+        int pieceIndex = msg.getPieceIndex();
         byte[] piece = msg.getPiece();
 
-        savePiece(pieceIdx, piece);
-        peer.bitfield[pieceIdx] = 1;
-        sendHaveToNeighbors(pieceIdx);
+        savePiece(pieceIndex, piece);
+        peer.bitfield[pieceIndex] = 1;
+        sendHaveToNeighbors(pieceIndex);
 
         if(!isChoked){
             int next = selectRandomPiece();
@@ -135,28 +140,28 @@ public class MessageHandler{
     private void handleUnchoke(Message msg) throws IOException {
         // when neighbor unchokes, choose a piece they have and send request
         isChoked = false;
-        int pieceIdx = selectRandomPiece();
+        int pieceIndex = selectRandomPiece();
 
-        if(pieceIdx != -1){
+        if(pieceIndex != -1){
             ByteBuffer buffer = ByteBuffer.allocate(4);
-            buffer.putInt(pieceIdx);
+            buffer.putInt(pieceIndex);
 
-            Message requestmsg = new Message(Message.MessageType.REQUEST, buffer.array());
+            Message requestMsg = new Message(Message.MessageType.REQUEST, buffer.array());
             out.write(requestMsg.toByteArray());
             out.flush();
         }
     }
 
     private void handleHave(Message msg) throws IOException {
-        int pieceIdx = msg.getPieceIndex();
+        int pieceIndex = msg.getPieceIndex();
 
-        remoteBitfield[pieceIdx] = 1;
+        remoteBitfield[pieceIndex] = 1;
 
-        if(peer.bitfield[pieceIdx] == 0){
+        if(peer.bitfield[pieceIndex] == 0) {
             Message interestedMsg = new Message(Message.MessageType.INTERESTED);
             out.write(interestedMsg.toByteArray());
         }
-        else{
+        else {
             Message notInterestedMsg = new Message(Message.MessageType.NOT_INTERESTED);
             out.write(notInterestedMsg.toByteArray());
         }
@@ -179,31 +184,31 @@ public class MessageHandler{
         return availablePieces.get(r.nextInt(availablePieces.size()));
     }
 
-    private byte[] loadPiece(int pieceIdx) throws IOException{
+    private byte[] loadPiece(int pieceIndex) throws IOException{
         String path = "peer_" + peer.peerId + "/" + peer.fileName;
 
         RandomAccessFile file = new RandomAccessFile(path, "r");
         byte[] piece = new byte[peer.pieceSize];
 
-        file.seek(pieceIdx * peer.pieceSize);
+        file.seek(pieceIndex * peer.pieceSize);
         file.read(piece);
         file.close();
 
         return piece;
     }
 
-    private void savePiece(int idx, byte[] data) throws IOException{
+    private void savePiece(int index, byte[] data) throws IOException{
         String path = "peer_" + peer.peerId + "/" + peer.fileName;
 
         RandomAccessFile file = new RandomAccessFile(path, "rw");
         byte[] piece = new byte[peer.pieceSize];
 
-        file.seek(idx * peer.pieceSize);
+        file.seek(index * peer.pieceSize);
         file.write(data);
         file.close();
     }
 
-    private void sendHaveToNeighbors(int pieceIdx) throws IOException{
+    private void sendHaveToNeighbors(int pieceIndex) throws IOException{
         ByteBuffer buffer = ByteBuffer.allocate(4);
         buffer.putInt(pieceIndex);
 
