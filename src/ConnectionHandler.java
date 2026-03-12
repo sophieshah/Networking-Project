@@ -4,6 +4,7 @@ import java.util.*;
 
 public class ConnectionHandler implements Runnable{
     private Socket serverSocket;
+    public OutputStream out;
     private peerProcess peer;
     int peerID;
 
