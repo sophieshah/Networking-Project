@@ -3,7 +3,8 @@ import java.net.*;
 import java.util.*;
 import java.nio.ByteBuffer;
 
-public class MessageHandler{
+public class MessageHandler
+{
     boolean isInterested;
     boolean isChoked;
     int[] remoteBitfield;
@@ -13,17 +14,21 @@ public class MessageHandler{
 
     private peerProcess peer;
     
-    public MessageHandler(InputStream in, OutputStream out, peerProcess peer) {
+    public MessageHandler(InputStream in, OutputStream out, peerProcess peer) 
+    {
         this.in = in;
         this.out = out;
         this.peer = peer;
     }
 
-    public void handleMessage() throws IOException {
-        while(true){
+    public void handleMessage() throws IOException
+    {
+        while(true)
+        {
             Message msg = Message.unpack(in);
 
-            switch(msg.getMessageType()){
+            switch(msg.getMessageType())
+            {
 
                 case BITFIELD:
                     handleBitfield(msg);
@@ -60,7 +65,8 @@ public class MessageHandler{
         }
     }
 
-    private void handleBitfield(Message msg) throws IOException {
+    private void handleBitfield(Message msg) throws IOException 
+    {
         // after handshake A sends bitfield msg to B to know which file pieces it has
         // if B has pieces that A doesnt have then send interested msg to B
         // otherwise send not interested msg
@@ -69,32 +75,39 @@ public class MessageHandler{
 
         boolean isInterested = false;
 
-        for(int i=0; i<payload.length; i++){
-            if(payload[i] == 1 && peer.bitfield[i] == 0){
+        for(int i=0; i<payload.length; i++)
+        {
+            if(payload[i] == 1 && peer.bitfield[i] == 0)
+            {
                 isInterested = true;
                 break;
             }
         }
 
-        if(isInterested){
+        if(isInterested)
+        {
             Message newMsg = new Message(Message.MessageType.INTERESTED);
             out.write(newMsg.toByteArray());
         }
-        else{
+        else
+        {
             Message newMsg = new Message(Message.MessageType.NOT_INTERESTED);
             out.write(newMsg.toByteArray());
         }
     }
 
-    private void handleInterested(Message msg) throws IOException {
+    private void handleInterested(Message msg) throws IOException
+    {
         isInterested = true;
     }
 
-    private void handleNotInterested(Message msg) throws IOException {
+    private void handleNotInterested(Message msg) throws IOException
+    {
         isInterested = false;
     }
 
-    private void handleRequest(Message msg) throws IOException {
+    private void handleRequest(Message msg) throws IOException
+    {
         // read requested index, load piece, send piece msg
         int pieceIndex = msg.getPieceIndex();
 
@@ -109,7 +122,8 @@ public class MessageHandler{
         out.flush();
     }
 
-    private void handlePiece(Message msg) throws IOException {
+    private void handlePiece(Message msg) throws IOException
+    {
         //save piece, update bitfield(savePiece), send have msg(sendHaveToNeighbors), request another piece
         int pieceIndex = msg.getPieceIndex();
         byte[] piece = msg.getPiece();
@@ -118,10 +132,12 @@ public class MessageHandler{
         peer.bitfield[pieceIndex] = 1;
         sendHaveToNeighbors(pieceIndex);
 
-        if(!isChoked){
+        if(!isChoked)
+        {
             int next = selectRandomPiece();
 
-            if(next != -1){
+            if(next != -1)
+            {
                 ByteBuffer buffer = ByteBuffer.allocate(4);
                 buffer.putInt(next);
 
@@ -132,17 +148,20 @@ public class MessageHandler{
         }
     }
 
-    private void handleChoke(Message msg) throws IOException {
+    private void handleChoke(Message msg) throws IOException
+    {
         // when neighbor chokes, must stop requesting pieces
         isChoked = true;
     }
 
-    private void handleUnchoke(Message msg) throws IOException {
+    private void handleUnchoke(Message msg) throws IOException
+    {
         // when neighbor unchokes, choose a piece they have and send request
         isChoked = false;
         int pieceIndex = selectRandomPiece();
 
-        if(pieceIndex != -1){
+        if(pieceIndex != -1)
+        {
             ByteBuffer buffer = ByteBuffer.allocate(4);
             buffer.putInt(pieceIndex);
 
@@ -152,31 +171,38 @@ public class MessageHandler{
         }
     }
 
-    private void handleHave(Message msg) throws IOException {
+    private void handleHave(Message msg) throws IOException
+    {
         int pieceIndex = msg.getPieceIndex();
 
         remoteBitfield[pieceIndex] = 1;
 
-        if(peer.bitfield[pieceIndex] == 0) {
+        if(peer.bitfield[pieceIndex] == 0)
+        {
             Message interestedMsg = new Message(Message.MessageType.INTERESTED);
             out.write(interestedMsg.toByteArray());
         }
-        else {
+        else
+        {
             Message notInterestedMsg = new Message(Message.MessageType.NOT_INTERESTED);
             out.write(notInterestedMsg.toByteArray());
         }
         out.flush();
     }
 
-    private int selectRandomPiece() throws IOException{
+    private int selectRandomPiece() throws IOException
+    {
         List<Integer> availablePieces = new ArrayList<>();
 
-        for(int i=0; i<peer.numPieces; i++){
-            if(peer.bitfield[i] == 0 && remoteBitfield[i] == 1){
+        for(int i=0; i<peer.numPieces; i++)
+        {
+            if(peer.bitfield[i] == 0 && remoteBitfield[i] == 1)
+            {
                 availablePieces.add(i);
             }
         }
-        if(availablePieces.isEmpty()){
+        if(availablePieces.isEmpty())
+        {
             return -1;
         }
         
@@ -184,7 +210,8 @@ public class MessageHandler{
         return availablePieces.get(r.nextInt(availablePieces.size()));
     }
 
-    private byte[] loadPiece(int pieceIndex) throws IOException{
+    private byte[] loadPiece(int pieceIndex) throws IOException
+    {
         String path = "peer_" + peer.peerId + "/" + peer.fileName;
 
         RandomAccessFile file = new RandomAccessFile(path, "r");
@@ -197,7 +224,8 @@ public class MessageHandler{
         return piece;
     }
 
-    private void savePiece(int index, byte[] data) throws IOException{
+    private void savePiece(int index, byte[] data) throws IOException
+    {
         String path = "peer_" + peer.peerId + "/" + peer.fileName;
 
         RandomAccessFile file = new RandomAccessFile(path, "rw");
@@ -208,7 +236,8 @@ public class MessageHandler{
         file.close();
     }
 
-    private void sendHaveToNeighbors(int pieceIndex) throws IOException{
+    private void sendHaveToNeighbors(int pieceIndex) throws IOException
+    {
         ByteBuffer buffer = ByteBuffer.allocate(4);
         buffer.putInt(pieceIndex);
 
@@ -216,7 +245,8 @@ public class MessageHandler{
         
         byte[] msgBytes = haveMsg.toByteArray();
 
-        for(ConnectionHandler c : peer.connections){
+        for(ConnectionHandler c : peer.connections)
+        {
             c.out.write(msgBytes);
             c.out.flush();
         }
