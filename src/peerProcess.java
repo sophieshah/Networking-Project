@@ -6,6 +6,7 @@ import java.nio.file.*;
 
 public class peerProcess {
     int peerId;
+    private ServerSocket serverSocket;
 
     //from common.cfg
     int neighbors;
@@ -14,7 +15,7 @@ public class peerProcess {
     String fileName;
     int fileSize;
     int pieceSize;
-    float numPieces;
+    int numPieces;
 
     int curPort;
     String curHost;
@@ -42,7 +43,7 @@ public class peerProcess {
             pieceSize = Integer.parseInt(Cfg.getProperty("PieceSize"));
             numPieces = (int) Math.ceil((double) fileSize / pieceSize);
             bitfield = new int[numPieces];
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -72,7 +73,7 @@ public class peerProcess {
 
                 peerInfoList.add(vars);
             }
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -91,27 +92,24 @@ public class peerProcess {
 
 
     public void connectToPrevPeers(){
-        int id, listeningPort;
-        String hostName;
         for(String[] peer : peerInfoList){
-            id = Integer.parseInt(peer[0]);
-            hostName = peer[1];
-            listeningPort = Integer.parseInt(peer[2]);
-        }
+            int id = Integer.parseInt(peer[0]);
+            String hostName = peer[1];
+            int listeningPort = Integer.parseInt(peer[2]);
 
-
-        if(id < this.peerId){
-            try{
-                startSocket(hostName, listeningPort);
-            } catch(Exception e){
-                e.printStackTrace();
+            if(id < this.peerId){
+                try{
+                    startSocket(hostName, listeningPort);
+                } catch(IOException e){
+                    e.printStackTrace();
+                }
             }
         }
     }
 
 
     public void startSocket(String host, int listeningPort) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(listeningPort);
+        serverSocket = new ServerSocket(listeningPort);
         System.out.println("server connected successfully");
 
 
@@ -146,13 +144,16 @@ public class peerProcess {
         // start the server socket in readCFGs
         p.readCFGs();
 
-        startSocket(curHost, curPort);
+        try {
+            p.startSocket(p.curHost, p.curPort);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         // peer makes connection to all peers before it : array list
         p.connectToPrevPeers();
 
         // start messaging
-
 
         // create subdirectory for individual peers
     }
