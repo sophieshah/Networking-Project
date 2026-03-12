@@ -61,7 +61,7 @@ public class Message
         return buffer.array();
     }
 
-    public static Message unpack(InputStream message)
+    public static Message unpack(InputStream message) throws IOException
     {
         byte[] byteLength = message.readNBytes(4);
         int length = ByteBuffer.wrap(byteLength).getInt();
@@ -72,11 +72,11 @@ public class Message
         byte[] payload;
         if (payloadLength > 0)
         {
-            this.payload = message.readNBytes(payloadLength);
+            payload = message.readNBytes(payloadLength);
         }
         else
         {
-            this.payload = new byte[0];
+            payload = new byte[0];
         }
 
         return new Message(MessageType.values()[type], payload);
