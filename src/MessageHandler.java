@@ -2,67 +2,79 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.nio.ByteBuffer;
+import java.sql.Connection;
 
 public class MessageHandler
 {
     boolean isInterested;
-    boolean isChoked;
+    boolean isChoked = true;
     int[] remoteBitfield;
+    Set<Integer> requestedPieces = new HashSet<>();
+    private int piecesDownloaded = 0;
+
 
     private InputStream in;
     private OutputStream out;
 
     private peerProcess peer;
+    private ConnectionHandler parent;
     
-    public MessageHandler(InputStream in, OutputStream out, peerProcess peer) 
+    public MessageHandler(InputStream in, OutputStream out, peerProcess peer, ConnectionHandler parent) 
     {
         this.in = in;
         this.out = out;
         this.peer = peer;
+        this.parent = parent;
+        this.remoteBitfield = new int[peer.numPieces];
     }
 
     public void handleMessage() throws IOException
     {
-        while(true)
-        {
-            Message msg = Message.unpack(in);
-
-            switch(msg.getMessageType())
+        try {
+            while(true)
             {
+                Message msg = Message.unpack(in);
 
-                case BITFIELD:
-                    handleBitfield(msg);
-                    break;
-                
-                case INTERESTED:
-                    handleInterested(msg);
-                    break;
+                switch(msg.getMessageType())
+                {
 
-                case NOT_INTERESTED:
-                    handleNotInterested(msg);
-                    break;
+                    case BITFIELD:
+                        handleBitfield(msg);
+                        break;
+                    
+                    case INTERESTED:
+                        handleInterested(msg);
+                        break;
 
-                case REQUEST:
-                    handleRequest(msg);
-                    break;
+                    case NOT_INTERESTED:
+                        handleNotInterested(msg);
+                        break;
 
-                case PIECE:
-                    handlePiece(msg);
-                    break;
+                    case REQUEST:
+                        handleRequest(msg);
+                        break;
 
-                case CHOKE:
-                    handleChoke(msg);
-                    break;
+                    case PIECE:
+                        handlePiece(msg);
+                        break;
 
-                case UNCHOKE:
-                    handleUnchoke(msg);
-                    break;
+                    case CHOKE:
+                        handleChoke(msg);
+                        break;
 
-                case HAVE:
-                    handleHave(msg);
-                    break;
+                    case UNCHOKE:
+                        handleUnchoke(msg);
+                        break;
+
+                    case HAVE:
+                        handleHave(msg);
+                        break;
+                }
             }
+        } catch(IOException e) {
+            System.out.println("Connection closed");
         }
+        
     }
 
     private void handleBitfield(Message msg) throws IOException 
@@ -73,13 +85,24 @@ public class MessageHandler
 
         byte[] payload = msg.getPayload();
 
-        boolean isInterested = false;
-
-        for(int i=0; i<payload.length; i++)
+        for( int i=0; i<peer.numPieces; i++)
         {
-            if(payload[i] == 1 && peer.bitfield[i] == 0)
+            int byteIdx = i / 8;
+            int bitIdx = 7 - (i % 8);
+            if (byteIdx < payload.length) {
+                int bit = (payload[byteIdx] >> bitIdx) & 1;
+                remoteBitfield[i] = bit;
+        }
+        }
+
+
+        this.isInterested = false;
+
+        for(int i=0; i<peer.numPieces; i++)
+        {
+            if(remoteBitfield[i] == 1 && peer.bitfield[i] == 0)
             {
-                isInterested = true;
+                this.isInterested = true;
                 break;
             }
         }
@@ -94,6 +117,7 @@ public class MessageHandler
             Message newMsg = new Message(Message.MessageType.NOT_INTERESTED);
             out.write(newMsg.toByteArray());
         }
+        out.flush();
     }
 
     private void handleInterested(Message msg) throws IOException
@@ -109,6 +133,11 @@ public class MessageHandler
     private void handleRequest(Message msg) throws IOException
     {
         // read requested index, load piece, send piece msg
+        if(isChoked)
+        {
+            return;
+        }
+
         int pieceIndex = msg.getPieceIndex();
 
         byte[] pieceData = loadPiece(pieceIndex);
@@ -146,6 +175,10 @@ public class MessageHandler
                 out.flush();
             }
         }
+
+        requestedPieces.remove(pieceIndex);
+        updateNeighborInterest();
+        incrementDownload();
     }
 
     private void handleChoke(Message msg) throws IOException
@@ -196,7 +229,7 @@ public class MessageHandler
 
         for(int i=0; i<peer.numPieces; i++)
         {
-            if(peer.bitfield[i] == 0 && remoteBitfield[i] == 1)
+            if(peer.bitfield[i] == 0 && remoteBitfield[i] == 1 && !requestedPieces.contains(i))
             {
                 availablePieces.add(i);
             }
@@ -207,7 +240,10 @@ public class MessageHandler
         }
         
         Random r = new Random();
-        return availablePieces.get(r.nextInt(availablePieces.size()));
+        int piece = availablePieces.get(r.nextInt(availablePieces.size()));
+        requestedPieces.add(piece);
+
+        return piece;
     }
 
     private byte[] loadPiece(int pieceIndex) throws IOException
@@ -215,7 +251,8 @@ public class MessageHandler
         String path = "peer_" + peer.peerId + "/" + peer.fileName;
 
         RandomAccessFile file = new RandomAccessFile(path, "r");
-        byte[] piece = new byte[peer.pieceSize];
+        int size = Math.min(peer.pieceSize, peer.fileSize - pieceIndex * peer.pieceSize);
+        byte[] piece = new byte[size];
 
         file.seek(pieceIndex * peer.pieceSize);
         file.read(piece);
@@ -229,7 +266,6 @@ public class MessageHandler
         String path = "peer_" + peer.peerId + "/" + peer.fileName;
 
         RandomAccessFile file = new RandomAccessFile(path, "rw");
-        byte[] piece = new byte[peer.pieceSize];
 
         file.seek(index * peer.pieceSize);
         file.write(data);
@@ -247,9 +283,57 @@ public class MessageHandler
 
         for(ConnectionHandler c : peer.connections)
         {
-            c.out.write(msgBytes);
-            c.out.flush();
+            c.sendMessage(msgBytes);
         }
     }
-}
 
+    private void updateNeighborInterest() throws IOException
+    {
+        boolean interested = false;
+
+        for(int i = 0; i < peer.numPieces; i++)
+        {
+            if(remoteBitfield[i] == 1 && peer.bitfield[i] == 0)
+            {
+                interested = true;
+                break;
+            }
+        }
+
+        if(interested)
+        {
+            Message interestedMsg = new Message(Message.MessageType.INTERESTED);
+            out.write(interestedMsg.toByteArray());
+        }
+        else
+        {
+            Message notInterestedMsg = new Message(Message.MessageType.NOT_INTERESTED);
+            out.write(notInterestedMsg.toByteArray());
+        }
+        out.flush();
+    }
+
+    
+    public synchronized int getAndResetPiecesDownloaded()
+    {
+        // get pieces downloaded this interval and reset counter for next intervall
+        int temp = piecesDownloaded;
+        piecesDownloaded = 0;
+        return temp;
+    }
+
+    public synchronized void incrementDownload(){
+        piecesDownloaded++;
+    }
+
+    private boolean allPiecesReceived(int[] bitfield)
+    {
+        for(int i=0; i<bitfield.length; i++)
+        {
+            if(bitfield[i] == 0)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
