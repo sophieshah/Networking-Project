@@ -2,16 +2,13 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.nio.ByteBuffer;
-import java.sql.Connection;
 
 public class MessageHandler
 {
-    boolean isInterested;
     boolean isChoked = true;
     int[] remoteBitfield;
     Set<Integer> requestedPieces = new HashSet<>();
     private int piecesDownloaded = 0;
-
 
     private InputStream in;
     private OutputStream out;
@@ -87,27 +84,38 @@ public class MessageHandler
 
         for( int i=0; i<peer.numPieces; i++)
         {
-            int byteIdx = i / 8;
-            int bitIdx = 7 - (i % 8);
-            if (byteIdx < payload.length) {
-                int bit = (payload[byteIdx] >> bitIdx) & 1;
+            int byteIndex = i / 8;
+            int bitIndex = 7 - (i % 8);
+            if (byteIndex < payload.length) {
+                int bit = (payload[byteIndex] >> bitIndex) & 1;
                 remoteBitfield[i] = bit;
         }
         }
 
 
-        this.isInterested = false;
+        parent.isInterested = false;
 
         for(int i=0; i<peer.numPieces; i++)
         {
             if(remoteBitfield[i] == 1 && peer.bitfield[i] == 0)
             {
-                this.isInterested = true;
+                parent.isInterested = true;
                 break;
             }
         }
 
-        if(isInterested)
+        boolean neighborComplete = true;
+        for (int bit : remoteBitfield)
+        {
+            if (bit == 0) { neighborComplete = false; break; }
+        }
+        if (neighborComplete)
+        {
+            peer.peersWithCompleteFile.add(parent.peerId);
+            peer.checkTermination();
+        }
+
+        if(parent.isInterested)
         {
             Message newMsg = new Message(Message.MessageType.INTERESTED);
             out.write(newMsg.toByteArray());
@@ -122,18 +130,20 @@ public class MessageHandler
 
     private void handleInterested(Message msg) throws IOException
     {
-        isInterested = true;
+        parent.isInterested = true;
+        peer.logger.logInterestedReceived(parent.peerId);
     }
 
     private void handleNotInterested(Message msg) throws IOException
     {
-        isInterested = false;
+        parent.isInterested = false;
+        peer.logger.logNotInterestedReceived(parent.peerId);
     }
 
     private void handleRequest(Message msg) throws IOException
     {
         // read requested index, load piece, send piece msg
-        if(isChoked)
+        if(parent.isChoked)
         {
             return;
         }
@@ -179,18 +189,29 @@ public class MessageHandler
         requestedPieces.remove(pieceIndex);
         updateNeighborInterest();
         incrementDownload();
+
+        int count = 0;
+        for (int bit : peer.bitfield) if (bit == 1) count++;
+        peer.logger.logPieceDownloaded(parent.peerId, pieceIndex, count);
+
+        if (count == peer.numPieces)
+        {
+            peer.logger.logDownloadComplete();
+            peer.peersWithCompleteFile.add(peer.peerId);
+            peer.checkTermination();
+        }
     }
 
     private void handleChoke(Message msg) throws IOException
     {
-        // when neighbor chokes, must stop requesting pieces
         isChoked = true;
+        peer.logger.logChoked(parent.peerId);
     }
 
     private void handleUnchoke(Message msg) throws IOException
     {
-        // when neighbor unchokes, choose a piece they have and send request
         isChoked = false;
+        peer.logger.logUnchoked(parent.peerId);
         int pieceIndex = selectRandomPiece();
 
         if(pieceIndex != -1)
@@ -207,20 +228,36 @@ public class MessageHandler
     private void handleHave(Message msg) throws IOException
     {
         int pieceIndex = msg.getPieceIndex();
+        peer.logger.logHaveReceived(parent.peerId, pieceIndex);
 
         remoteBitfield[pieceIndex] = 1;
 
-        if(peer.bitfield[pieceIndex] == 0)
+        boolean neighborComplete = true;
+        for (int bit : remoteBitfield)
         {
+            if (bit == 0) { neighborComplete = false; break; }
+        }
+        if (neighborComplete)
+        {
+            peer.peersWithCompleteFile.add(parent.peerId);
+            peer.checkTermination();
+        }
+
+        boolean nowInterested = peer.bitfield[pieceIndex] == 0;
+        if (nowInterested && !parent.isInterested)
+        {
+            parent.isInterested = true;
             Message interestedMsg = new Message(Message.MessageType.INTERESTED);
             out.write(interestedMsg.toByteArray());
+            out.flush();
         }
-        else
+        else if (!nowInterested && parent.isInterested)
         {
+            parent.isInterested = false;
             Message notInterestedMsg = new Message(Message.MessageType.NOT_INTERESTED);
             out.write(notInterestedMsg.toByteArray());
+            out.flush();
         }
-        out.flush();
     }
 
     private int selectRandomPiece() throws IOException
@@ -248,28 +285,12 @@ public class MessageHandler
 
     private byte[] loadPiece(int pieceIndex) throws IOException
     {
-        String path = "peer_" + peer.peerId + "/" + peer.fileName;
-
-        RandomAccessFile file = new RandomAccessFile(path, "r");
-        int size = Math.min(peer.pieceSize, peer.fileSize - pieceIndex * peer.pieceSize);
-        byte[] piece = new byte[size];
-
-        file.seek(pieceIndex * peer.pieceSize);
-        file.read(piece);
-        file.close();
-
-        return piece;
+        return peer.fileManager.loadPiece(pieceIndex);
     }
 
     private void savePiece(int index, byte[] data) throws IOException
     {
-        String path = "peer_" + peer.peerId + "/" + peer.fileName;
-
-        RandomAccessFile file = new RandomAccessFile(path, "rw");
-
-        file.seek(index * peer.pieceSize);
-        file.write(data);
-        file.close();
+        peer.fileManager.savePiece(index, data);
     }
 
     private void sendHaveToNeighbors(int pieceIndex) throws IOException
@@ -327,15 +348,4 @@ public class MessageHandler
         piecesDownloaded++;
     }
 
-    private boolean allPiecesReceived(int[] bitfield)
-    {
-        for(int i=0; i<bitfield.length; i++)
-        {
-            if(bitfield[i] == 0)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
 }

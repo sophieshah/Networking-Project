@@ -8,14 +8,18 @@ public class ConnectionHandler implements Runnable{
     int peerId;
     public MessageHandler messageHandler;
     public boolean hasCompleteFile = false;
+    public boolean isInterested = false;
+    public boolean isChoked = true;
+    public boolean isIncoming = false;
 
-    public ConnectionHandler(Socket serverSocket) {
+    public ConnectionHandler(Socket serverSocket, peerProcess peer) {
         this.serverSocket = serverSocket;
+        this.peer = peer;
     }
 
     private void closeConnection() {
         try {
-            if (!serverSocket.isClosed() && serverSocket != null) {
+            if (serverSocket != null && !serverSocket.isClosed()) {
                 serverSocket.close();
             }
         } catch (IOException e) {
@@ -25,7 +29,7 @@ public class ConnectionHandler implements Runnable{
 
     private byte[] getBitfieldPayload()
     {
-        int numPieces = (int) Math.ceil(peer.numPieces);
+        int numPieces = peer.numPieces;
         byte[] payload = new byte[(numPieces + 7) / 8];
         for (int i = 0; i < numPieces; i++)
         {
@@ -42,12 +46,17 @@ public class ConnectionHandler implements Runnable{
         try
         {
             InputStream in = serverSocket.getInputStream();
-            OutputStream out = serverSocket.getOutputStream();
+            this.out = serverSocket.getOutputStream();
 
-            HandshakeMessage fromHandshake = new HandshakeMessage(peerId);
+            HandshakeMessage fromHandshake = new HandshakeMessage(peer.peerId);
             out.write(fromHandshake.toByteArray());
             HandshakeMessage toHandshake = HandshakeMessage.unpack(in);
-            int peerId = toHandshake.getPeerID();
+            this.peerId = toHandshake.getPeerID();
+
+            if (isIncoming)
+                peer.logger.logConnectionFrom(peerId);
+            else
+                peer.logger.logConnectionTo(peerId);
 
             System.out.println("Handshake completed with Peer " + peerId);
 

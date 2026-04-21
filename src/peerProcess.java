@@ -2,13 +2,14 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.nio.file.*;
+import java.util.concurrent.*;
 
 
 public class peerProcess
 {
     int peerId;
     private ServerSocket serverSocket;
-    List<ConnectionHandler> connections;
+    List<ConnectionHandler> connections = new ArrayList<>();
 
     //from common.cfg
     int neighbors;
@@ -26,6 +27,9 @@ public class peerProcess
     // holds all the info from PeerInfo.cfg
     List<String[]> peerInfoList = new ArrayList<>();
     int[] bitfield;
+    FileManager fileManager;
+    PeerLogger logger;
+    Set<Integer> peersWithCompleteFile = new HashSet<>();
 
     public peerProcess(int peerId)
     {
@@ -37,7 +41,7 @@ public class peerProcess
     {
         //read common.cfg and save to PeerProcess variables
         Properties Cfg = new Properties();
-        try (FileInputStream common = new FileInputStream("common.cfg"))
+        try (FileInputStream common = new FileInputStream("Common.cfg"))
         {
             Cfg.load(common);
             neighbors = Integer.parseInt(Cfg.getProperty("NumberOfPreferredNeighbors"));
@@ -81,6 +85,9 @@ public class peerProcess
                 }
 
 
+                if (hasFile == 1)
+                    peersWithCompleteFile.add(id);
+
                 peerInfoList.add(vars);
             }
         } 
@@ -104,8 +111,48 @@ public class peerProcess
                 bitfield[i] = 0;
             }
         }
+
+        try
+        {
+            fileManager = new FileManager(this);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
     }
 
+    public void listen()
+    {
+        try {
+            serverSocket = new ServerSocket(curPort);
+            
+            while(true)
+            {
+                Socket clientSocket = serverSocket.accept();
+                ConnectionHandler handler = new ConnectionHandler(clientSocket, this);
+                handler.isIncoming = true;
+                synchronized (connections) {
+                    connections.add(handler);
+                }
+                new Thread(handler).start();
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void connect(String hname, int port) throws IOException
+    {
+        Socket socket = new Socket(hname, port);
+        ConnectionHandler handler = new ConnectionHandler(socket, this);
+        synchronized (connections) {
+            connections.add(handler);
+        }
+        new Thread(handler).start();
+    }
 
     public void connectToPrevPeers()
     {
@@ -119,7 +166,7 @@ public class peerProcess
             {
                 try
                 {
-                    startSocket(hostName, listeningPort);
+                    connect(hostName, listeningPort);
                 } 
                 catch(IOException e)
                 {
@@ -140,9 +187,20 @@ public class peerProcess
         {
             Socket clientSocket = serverSocket.accept();
             System.out.println("client connected successfully");
+            ConnectionHandler handler = new ConnectionHandler(clientSocket, this);
+            synchronized (connections) {
+                connections.add(handler);
+            }
+            new Thread(handler).start();
+        }
+    }
 
-
-            new Thread(new ConnectionHandler(clientSocket)).start();
+    public synchronized void checkTermination()
+    {
+        if (peersWithCompleteFile.size() == peerInfoList.size())
+        {
+            System.out.println("All peers have the complete file. Shutting down.");
+            System.exit(0);
         }
     }
 
@@ -150,7 +208,7 @@ public class peerProcess
     {
         try 
         {
-            if (!serverSocket.isClosed() && serverSocket != null)
+            if (serverSocket != null && !serverSocket.isClosed())
             {
                 serverSocket.close();
             }
@@ -165,6 +223,14 @@ public class peerProcess
     {
         int peerId = Integer.parseInt(args[0].trim());
         peerProcess p = new peerProcess(peerId);
+        try
+        {
+            p.logger = new PeerLogger(peerId);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
         
         // Read peerID from command line
         // Read in Common.cfg & PeerInfo.cfg
@@ -173,18 +239,23 @@ public class peerProcess
         // if 0: all bits in bitfield == 0
         // start the server socket in readCFGs
         p.readCFGs();
+        //new Thread(() -> p.listen()).start();
 
-        try
-        {
-            p.startSocket(p.curHost, p.curPort);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        new Thread(() -> {
+            try {
+                p.startSocket(p.curHost, p.curPort);
+            }
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
 
-        // peer makes connection to all peers before it : array list
         p.connectToPrevPeers();
 
-        // start messaging
+
+        // choke/unchoke timers
+        ChokeManager manager = new ChokeManager(p);
+        new Thread(manager).start();
 
         // create subdirectory for individual peers
     }
