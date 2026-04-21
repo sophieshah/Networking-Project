@@ -283,7 +283,8 @@ public class MessageHandler
 
         for(ConnectionHandler c : peer.connections)
         {
-            c.sendMessage(msgBytes);
+            c.out.write(msgBytes);
+            c.out.flush();
         }
     }
 
@@ -337,3 +338,4 @@ public class MessageHandler
         }
         return true;
     }
+}

@@ -1,12 +1,13 @@
 import java.io.*;
 import java.net.*;
-import java.util.*;
 
 public class ConnectionHandler implements Runnable{
     private Socket serverSocket;
     public OutputStream out;
     private peerProcess peer;
     int peerId;
+    public MessageHandler messageHandler;
+    public boolean hasCompleteFile = false;
 
     public ConnectionHandler(Socket serverSocket) {
         this.serverSocket = serverSocket;
@@ -57,8 +58,8 @@ public class ConnectionHandler implements Runnable{
 
             // Have to handle logging 
 
-            MessageHandler message = new MessageHandler(in, out, peer);
-            message.handleMessage();
+            messageHandler = new MessageHandler(in, out, peer, this);
+            messageHandler.handleMessage();
         } 
         catch (Exception e)
         {
