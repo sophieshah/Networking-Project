@@ -8,10 +8,6 @@ public class ConnectionHandler implements Runnable {
     private peerProcess peer;
     int peerId = -1;
 
-    public volatile boolean isInterested = false;    // remote peer is interested in us
-    public volatile boolean isChoked = true;         // we are choked by remote peer
-    public volatile boolean isChokingRemote = true;  // we are choking the remote peer
-
     // Tracks which pieces the remote peer has — set by MessageHandler
     public int[] remoteBitfield;
 
