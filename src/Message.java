@@ -64,15 +64,22 @@ public class Message
     public static Message unpack(InputStream message) throws IOException
     {
         byte[] byteLength = message.readNBytes(4);
+        if (byteLength.length < 4)
+            throw new IOException("Connection closed");
         int length = ByteBuffer.wrap(byteLength).getInt();
 
-        byte type = message.readNBytes(1)[0];
+        byte[] typeBytes = message.readNBytes(1);
+        if (typeBytes.length < 1)
+            throw new IOException("Connection closed");
+        byte type = typeBytes[0];
 
         int payloadLength = length - 1;
         byte[] payload;
         if (payloadLength > 0)
         {
             payload = message.readNBytes(payloadLength);
+            if (payload.length < payloadLength)
+                throw new IOException("Connection closed");
         }
         else
         {

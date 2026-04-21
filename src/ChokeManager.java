@@ -40,7 +40,7 @@ public class ChokeManager implements Runnable
         }).start();
     }
 
-    private void updatePreferred() throws IOException
+    private void updatePreferred()
     {
         List<ConnectionHandler> interested = new ArrayList<>();
 
@@ -111,7 +111,7 @@ public class ChokeManager implements Runnable
         }
     }
 
-    private void updateOptimistic() throws IOException
+    private void updateOptimistic()
     {
         List<ConnectionHandler> candidates = new ArrayList<>();
 
@@ -151,14 +151,21 @@ public class ChokeManager implements Runnable
         return true;
     }
 
-    private void sendMessage(ConnectionHandler c, Message msg) throws IOException
+    private void sendMessage(ConnectionHandler c, Message msg)
     {
         if (c.out != null)
         {
-            synchronized (c.out)
+            try
             {
-                c.out.write(msg.toByteArray());
-                c.out.flush();
+                synchronized (c.out)
+                {
+                    c.out.write(msg.toByteArray());
+                    c.out.flush();
+                }
+            }
+            catch (IOException e)
+            {
+                // connection already closed, skip
             }
         }
     }

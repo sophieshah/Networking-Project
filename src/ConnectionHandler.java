@@ -76,6 +76,19 @@ public class ConnectionHandler implements Runnable{
         } 
         finally
         {
+            if (messageHandler != null)
+            {
+                boolean complete = true;
+                for (int bit : messageHandler.remoteBitfield)
+                {
+                    if (bit == 0) { complete = false; break; }
+                }
+                if (complete)
+                {
+                    peer.peersWithCompleteFile.add(peerId);
+                    peer.checkTermination();
+                }
+            }
             closeConnection();
         }
     }

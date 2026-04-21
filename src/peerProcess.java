@@ -29,7 +29,7 @@ public class peerProcess
     int[] bitfield;
     FileManager fileManager;
     PeerLogger logger;
-    Set<Integer> peersWithCompleteFile = new HashSet<>();
+    Set<Integer> peersWithCompleteFile = Collections.synchronizedSet(new HashSet<>());
 
     public peerProcess(int peerId)
     {
