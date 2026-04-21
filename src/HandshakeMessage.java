@@ -27,16 +27,17 @@ public class HandshakeMessage
         return buffer.array();
     }
 
-    public static HandshakeMessage unpack(InputStream in) throws IOException
+    public static HandshakeMessage unpack(InputStream stream) throws IOException
     {
-        byte[] data = in.readNBytes(messageLength);
+        DataInputStream in = new DataInputStream(stream);
+        byte[] data = new byte[messageLength];
+        in.readFully(data);
 
-        // Header will always be "P2PFILESHARINGPROJ"
+        // Header will alwyas be "P2PFILESHARINGPROJ"
         String h = new String(data, 0, 18);
 
         int peerID = ByteBuffer.wrap(data, 28, 4).getInt();
-
+        
         return new HandshakeMessage(peerID);
     }
-
 }

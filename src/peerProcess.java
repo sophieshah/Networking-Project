@@ -1,14 +1,17 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+
+import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList.*;
 import java.nio.file.*;
 
-
-public class peerProcess
-{
+public class peerProcess {
     int peerId;
     private ServerSocket serverSocket;
-    List<ConnectionHandler> connections;
+
+    // Thread-safe list of active connections
+    List<ConnectionHandler> connections = new CopyOnWriteArrayList<>();
 
     //from common.cfg
     int neighbors;
@@ -25,27 +28,49 @@ public class peerProcess
 
     // holds all the info from PeerInfo.cfg
     List<String[]> peerInfoList = new ArrayList<>();
+
     int[] bitfield;
 
-    public peerProcess(int peerId)
-    {
+    PeerLogger logger;
+    FileManager fileManager;
+    ChokeManager chokeManager;
+
+    public peerProcess(int peerId) {
         this.peerId = peerId;
+        this.logger = new PeerLogger(peerId);
     }
 
+    public synchronized void addConnection(ConnectionHandler c) {
+        connections.add(c);
+    }
+
+    public synchronized void removeConnection(ConnectionHandler c) {
+        connections.remove(c);
+    }
+
+    public synchronized int getPieceCount() {
+        int count = 0;
+        for (int b : bitfield) if (b == 1) count++;
+        return count;
+    }
+
+    public synchronized boolean hasCompleteFile() {
+        return getPieceCount() == numPieces;
+    }
 
     public void readCFGs()
     {
         //read common.cfg and save to PeerProcess variables
         Properties Cfg = new Properties();
-        try (FileInputStream common = new FileInputStream("common.cfg"))
+        try (FileInputStream common = new FileInputStream("Common.cfg"))
         {
             Cfg.load(common);
-            neighbors = Integer.parseInt(Cfg.getProperty("NumberOfPreferredNeighbors"));
-            unchokingInterval = Integer.parseInt(Cfg.getProperty("UnchokingInterval"));
-            OptimisticUnchokingInterval = Integer.parseInt(Cfg.getProperty("OptimisticUnchokingInterval"));
-            fileName = Cfg.getProperty("FileName");
-            fileSize = Integer.parseInt(Cfg.getProperty("FileSize"));
-            pieceSize = Integer.parseInt(Cfg.getProperty("PieceSize"));
+            neighbors = Integer.parseInt(Cfg.getProperty("NumberOfPreferredNeighbors").trim());
+            unchokingInterval = Integer.parseInt(Cfg.getProperty("UnchokingInterval").trim());
+            OptimisticUnchokingInterval = Integer.parseInt(Cfg.getProperty("OptimisticUnchokingInterval").trim());
+            fileName = Cfg.getProperty("FileName").trim();
+            fileSize = Integer.parseInt(Cfg.getProperty("FileSize").trim());
+            pieceSize = Integer.parseInt(Cfg.getProperty("PieceSize").trim());
             numPieces = (int) Math.ceil((double) fileSize / pieceSize);
             bitfield = new int[numPieces];
         } 
@@ -54,16 +79,17 @@ public class peerProcess
             e.printStackTrace();
         }
 
-
         //read PeerInfo.cfg, create new subdirectory for each peer, save variables to arraylist
-        try(BufferedReader br = new BufferedReader(new FileReader("PeerInfo.cfg")))
+        try (BufferedReader br = new BufferedReader(new FileReader("PeerInfo.cfg")))
         {
             String line;
 
-            while((line = br.readLine()) != null)
+            while ((line = br.readLine()) != null)
             {
+                line = line.trim();
+                if (line.isEmpty()) continue;
                 String[] vars = line.split("\\s+");
-               
+
                 int id = Integer.parseInt(vars[0]);
                 String hostName = vars[1];
                 int listeningPort = Integer.parseInt(vars[2]);
@@ -89,6 +115,23 @@ public class peerProcess
             e.printStackTrace();
         }
 
+        // Initialize FileManager
+        fileManager = new FileManager(peerId, fileName, pieceSize, numPieces, fileSize);
+        try
+        {
+            if (curHasFile == 0)
+            {
+                fileManager.initEmptyFile();
+            } 
+            else
+            {
+                fileManager.openExistingFile();
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
 
         if(curHasFile == 1)
         {
@@ -104,12 +147,31 @@ public class peerProcess
                 bitfield[i] = 0;
             }
         }
+
+        // Initialize and start ChokeManager
+        chokeManager = new ChokeManager(this);
     }
 
+    // Accept incoming connections in a loop (runs in its own thread)
+    public void startListening() throws IOException {
+        serverSocket = new ServerSocket(curPort);
+        System.out.println("Peer " + peerId + " listening on port " + curPort);
 
-    public void connectToPrevPeers()
-    {
-        for(String[] peer : peerInfoList)
+        while (true) {
+            try {
+                Socket clientSocket = serverSocket.accept();
+                ConnectionHandler handler = new ConnectionHandler(clientSocket, this);
+                new Thread(handler).start();
+            } catch (SocketException e) {
+                // serverSocket was closed — shutting down
+                break;
+            }
+        }
+    }
+
+    // Connect outward to all peers listed before this one
+    public void connectToPrevPeers() {
+        for (String[] peer : peerInfoList)
         {
             int id = Integer.parseInt(peer[0].trim());
             String hostName = peer[1];
@@ -119,31 +181,52 @@ public class peerProcess
             {
                 try
                 {
-                    startSocket(hostName, listeningPort);
-                } 
-                catch(IOException e)
+                    Socket socket = new Socket(hostName, listeningPort);
+                    System.out.println("Peer " + peerId + " connected to Peer " + id);
+                    logger.logTCPConnectionTo(id);
+                    ConnectionHandler handler = new ConnectionHandler(socket, this);
+                    new Thread(handler).start();
+                }
+                catch (IOException e)
                 {
-                    e.printStackTrace();
+                    System.err.println("Failed to connect to peer " + id + ": " + e.getMessage());
                 }
             }
         }
     }
 
+    // Check if all peers have the complete file by inspecting all known bitfields.
+    // Called after every piece download or have message.
+    public synchronized void checkAllComplete() {
+        // We must have the complete file ourselves
+        if (!hasCompleteFile()) return;
 
-    public void startSocket(String host, int listeningPort) throws IOException
-    {
-        serverSocket = new ServerSocket(listeningPort);
-        System.out.println("server connected successfully");
+        // We must be connected to all other peers (total peers - 1)
+        int totalPeers = peerInfoList.size();
+        if (connections.size() < totalPeers - 1) return;
 
-
-        while(true)
-        {
-            Socket clientSocket = serverSocket.accept();
-            System.out.println("client connected successfully");
-
-
-            new Thread(new ConnectionHandler(clientSocket)).start();
+        // Every connected neighbor must also have all pieces
+        for (ConnectionHandler c : connections) {
+            if (c.remoteBitfield == null) return;
+            for (int i = 0; i < numPieces; i++) {
+                if (c.remoteBitfield[i] == 0) return;
+            }
         }
+
+        System.out.println("All peers have downloaded the complete file. Shutting down.");
+        shutdown();
+    }
+
+    private void shutdown() {
+        chokeManager.stop();
+        fileManager.close();
+        logger.close();
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.exit(0);
     }
 
     public void closeSocket()
@@ -165,27 +248,30 @@ public class peerProcess
     {
         int peerId = Integer.parseInt(args[0].trim());
         peerProcess p = new peerProcess(peerId);
-        
-        // Read peerID from command line
-        // Read in Common.cfg & PeerInfo.cfg
-        // PeerInfo: find if boolean value is 1 or 0
-        // if 1: all bits in bitfield == 1
-        // if 0: all bits in bitfield == 0
-        // start the server socket in readCFGs
+
         p.readCFGs();
 
-        try
-        {
-            p.startSocket(p.curHost, p.curPort);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // Start listening for incoming connections in a background thread
+        new Thread(() -> {
+            try {
+                p.startListening();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
 
-        // peer makes connection to all peers before it : array list
+        // Give the server socket a moment to start
+        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+
+        // Connect to all peers that started before this one
         p.connectToPrevPeers();
 
-        // start messaging
+        // Start choke/unchoke timers
+        p.chokeManager.start();
 
-        // create subdirectory for individual peers
+        // Keep main thread alive
+        try {
+            Thread.currentThread().join();
+        } catch (InterruptedException ignored) {}
     }
 }

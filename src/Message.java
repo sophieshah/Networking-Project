@@ -57,26 +57,22 @@ public class Message
         if (payload.length > 0)
         {
             buffer.put(payload);
-        } 
+        }
         return buffer.array();
     }
 
     public static Message unpack(InputStream message) throws IOException
     {
-        byte[] byteLength = message.readNBytes(4);
-        int length = ByteBuffer.wrap(byteLength).getInt();
+        DataInputStream in = new DataInputStream(message);
 
-        byte type = message.readNBytes(1)[0];
+        int length = in.readInt();           // guaranteed 4 bytes
+        byte type = in.readByte();           // guaranteed 1 byte
 
         int payloadLength = length - 1;
-        byte[] payload;
+        byte[] payload = new byte[payloadLength];
         if (payloadLength > 0)
         {
-            payload = message.readNBytes(payloadLength);
-        }
-        else
-        {
-            payload = new byte[0];
+            in.readFully(payload);           // guaranteed all bytes
         }
 
         return new Message(MessageType.values()[type], payload);
