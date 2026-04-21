@@ -50,6 +50,7 @@ public class ConnectionHandler implements Runnable{
 
             HandshakeMessage fromHandshake = new HandshakeMessage(peer.peerId);
             out.write(fromHandshake.toByteArray());
+            out.flush();
             HandshakeMessage toHandshake = HandshakeMessage.unpack(in);
             this.peerId = toHandshake.getPeerID();
 
@@ -64,8 +65,7 @@ public class ConnectionHandler implements Runnable{
             Message bitfieldMessage = new Message(Message.MessageType.BITFIELD, bitfieldPayload);
 
             out.write(bitfieldMessage.toByteArray());
-
-            // Have to handle logging 
+            out.flush();
 
             messageHandler = new MessageHandler(in, out, peer, this);
             messageHandler.handleMessage();

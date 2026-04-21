@@ -69,7 +69,8 @@ public class MessageHandler
                 }
             }
         } catch(IOException e) {
-            System.out.println("Connection closed");
+            System.out.println("Connection closed: " + e.getMessage());
+            e.printStackTrace();
         }
         
     }
