@@ -6,8 +6,8 @@ public class HandshakeMessage
     private static String header = "P2PFILESHARINGPROJ";
     private static int zeroBits = 10;
     private static int messageLength = 32;
-
     private int peerID = 4;
+    
     public HandshakeMessage(int peerId)
     {
         this.peerID = peerId;
