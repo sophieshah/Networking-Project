@@ -79,13 +79,13 @@ public class ChokeManager implements Runnable
                 }
                 rates.put(c, rate);
             }
-            Random rand = new Random();
+            Random r = new Random();
             interested.sort((a, b) -> {
                 int diff = rates.get(b) - rates.get(a);
                 if (diff != 0) {
                     return diff;
                 }
-               if (rand.nextInt(2) == 0)
+               if (r.nextInt(2) == 0)
                 {
                     return 1;
                 }
@@ -157,7 +157,7 @@ public class ChokeManager implements Runnable
 
     private void updateOptimistic()
     {
-        List<ConnectionHandler> candidates = new ArrayList<>();
+        List<ConnectionHandler> c_options = new ArrayList<>();
 
         synchronized (peer.connections)
         {
@@ -166,29 +166,29 @@ public class ChokeManager implements Runnable
                 ConnectionHandler c = peer.connections.get(i);
                 if (c.isChoked && c.remoteInterestedInMe)
                 {
-                    candidates.add(c);
+                    c_options.add(c);
                 }
             }
         }
 
-        if (candidates.isEmpty())
+        if (c_options.isEmpty())
         {
             return;
         }
 
-        Collections.shuffle(candidates);
-        ConnectionHandler chosen = candidates.get(0);
+        Collections.shuffle(c_options);
+        ConnectionHandler c_selected = c_options.get(0);
 
-        if (optimisticNeighbor != null && optimisticNeighbor != chosen)
+        if (optimisticNeighbor != null && optimisticNeighbor != c_selected)
         {
             optimisticNeighbor.isChoked = true;
             sendMessage(optimisticNeighbor, new Message(Message.MessageType.CHOKE));
         }
 
-        optimisticNeighbor = chosen;
-        peer.logger.logOptimisticNeighbor(chosen.peerId);
-        chosen.isChoked = false;
-        sendMessage(chosen, new Message(Message.MessageType.UNCHOKE));
+        optimisticNeighbor = c_selected;
+        peer.logger.logOptimisticNeighbor(c_selected.peerId);
+        c_selected.isChoked = false;
+        sendMessage(c_selected, new Message(Message.MessageType.UNCHOKE));
     }
 
     private boolean hasCompleteFile()
@@ -199,16 +199,9 @@ public class ChokeManager implements Runnable
             {
                 return false;
             }
-        }
-        return true;
-    }
-
-    private void sendMessage(ConnectionHandler c, Message msg)
-    {
-        if (c.out != null)
-        {
-            try
-            {
+;
+            }
+     {
                 synchronized (c.out)
                 {
                     c.out.write(msg.toByteArray());
