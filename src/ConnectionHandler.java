@@ -8,7 +8,8 @@ public class ConnectionHandler implements Runnable{
     int peerId;
     public MessageHandler messageHandler;
     public boolean hasCompleteFile = false;
-    public boolean isInterested = false;
+    public boolean amInterestedInRemote = false;
+    public boolean remoteInterestedInMe = false;
     public boolean isChoked = true;
     public boolean isIncoming = false;
 

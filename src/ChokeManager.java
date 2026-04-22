@@ -48,7 +48,7 @@ public class ChokeManager implements Runnable
         {
             for (ConnectionHandler c : peer.connections)
             {
-                if (c.isInterested)
+                if (c.remoteInterestedInMe)
                     interested.add(c);
             }
         }
@@ -137,7 +137,7 @@ public class ChokeManager implements Runnable
         {
             for (ConnectionHandler c : peer.connections)
             {
-                if (c.isChoked && c.isInterested)
+                if (c.isChoked && c.remoteInterestedInMe)
                     candidates.add(c);
             }
         }

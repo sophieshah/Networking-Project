@@ -94,13 +94,13 @@ public class MessageHandler
         }
 
 
-        parent.isInterested = false;
+        parent.amInterestedInRemote = false;
 
         for(int i=0; i<peer.numPieces; i++)
         {
             if(remoteBitfield[i] == 1 && peer.bitfield[i] == 0)
             {
-                parent.isInterested = true;
+                parent.amInterestedInRemote = true;
                 break;
             }
         }
@@ -116,7 +116,7 @@ public class MessageHandler
             peer.checkTermination();
         }
 
-        if(parent.isInterested)
+        if(parent.amInterestedInRemote)
         {
             Message newMsg = new Message(Message.MessageType.INTERESTED);
             out.write(newMsg.toByteArray());
@@ -131,13 +131,13 @@ public class MessageHandler
 
     private void handleInterested(Message msg) throws IOException
     {
-        parent.isInterested = true;
+        parent.remoteInterestedInMe = true;
         peer.logger.logInterestedReceived(parent.peerId);
     }
 
     private void handleNotInterested(Message msg) throws IOException
     {
-        parent.isInterested = false;
+        parent.remoteInterestedInMe = false;
         peer.logger.logNotInterestedReceived(parent.peerId);
     }
 
@@ -245,16 +245,16 @@ public class MessageHandler
         }
 
         boolean nowInterested = peer.bitfield[pieceIndex] == 0;
-        if (nowInterested && !parent.isInterested)
+        if (nowInterested && !parent.amInterestedInRemote)
         {
-            parent.isInterested = true;
+            parent.amInterestedInRemote = true;
             Message interestedMsg = new Message(Message.MessageType.INTERESTED);
             out.write(interestedMsg.toByteArray());
             out.flush();
         }
-        else if (!nowInterested && parent.isInterested)
+        else if (!nowInterested && parent.amInterestedInRemote)
         {
-            parent.isInterested = false;
+            parent.amInterestedInRemote = false;
             Message notInterestedMsg = new Message(Message.MessageType.NOT_INTERESTED);
             out.write(notInterestedMsg.toByteArray());
             out.flush();
@@ -305,8 +305,14 @@ public class MessageHandler
 
         for(ConnectionHandler c : peer.connections)
         {
-            c.out.write(msgBytes);
-            c.out.flush();
+            if (c.out != null)
+            {
+                synchronized (c.out)
+                {
+                    c.out.write(msgBytes);
+                    c.out.flush();
+                }
+            }
         }
     }
 
@@ -322,6 +328,13 @@ public class MessageHandler
                 break;
             }
         }
+
+        if(interested == parent.amInterestedInRemote)
+        {
+            return;
+        }
+
+        parent.amInterestedInRemote = interested;
 
         if(interested)
         {
