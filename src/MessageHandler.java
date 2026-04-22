@@ -27,7 +27,8 @@ public class MessageHandler
 
     public void handleMessage() throws IOException
     {
-        try {
+        try
+        {
             while(true)
             {
                 Message msg = Message.unpack(in);
@@ -68,11 +69,12 @@ public class MessageHandler
                         break;
                 }
             }
-        } catch(IOException e) {
+        } 
+        catch(IOException e)
+        {
             System.out.println("Connection closed: " + e.getMessage());
             e.printStackTrace();
         }
-        
     }
 
     private void handleBitfield(Message msg) throws IOException 
@@ -83,16 +85,16 @@ public class MessageHandler
 
         byte[] payload = msg.getPayload();
 
-        for( int i=0; i<peer.numPieces; i++)
+        for (int i=0; i<peer.numPieces; i++)
         {
             int byteIndex = i / 8;
             int bitIndex = 7 - (i % 8);
-            if (byteIndex < payload.length) {
+            if (byteIndex < payload.length)
+            {
                 int bit = (payload[byteIndex] >> bitIndex) & 1;
                 remoteBitfield[i] = bit;
+            }
         }
-        }
-
 
         parent.amInterestedInRemote = false;
 
@@ -108,7 +110,11 @@ public class MessageHandler
         boolean neighborComplete = true;
         for (int bit : remoteBitfield)
         {
-            if (bit == 0) { neighborComplete = false; break; }
+            if (bit == 0)
+            { 
+                neighborComplete = false; 
+                break;
+            }
         }
         if (neighborComplete)
         {
@@ -236,7 +242,11 @@ public class MessageHandler
         boolean neighborComplete = true;
         for (int bit : remoteBitfield)
         {
-            if (bit == 0) { neighborComplete = false; break; }
+            if (bit == 0)
+            {
+                neighborComplete = false;
+                break;
+            }
         }
         if (neighborComplete)
         {
@@ -358,7 +368,8 @@ public class MessageHandler
         return temp;
     }
 
-    public synchronized void incrementDownload(){
+    public synchronized void incrementDownload()
+    {
         piecesDownloaded++;
     }
 

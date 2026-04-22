@@ -65,12 +65,16 @@ public class Message
     {
         byte[] byteLength = message.readNBytes(4);
         if (byteLength.length < 4)
+        {
             throw new IOException("Connection closed");
+        }
         int length = ByteBuffer.wrap(byteLength).getInt();
 
         byte[] typeBytes = message.readNBytes(1);
         if (typeBytes.length < 1)
+        {
             throw new IOException("Connection closed");
+        }
         byte type = typeBytes[0];
 
         int payloadLength = length - 1;
@@ -79,7 +83,9 @@ public class Message
         {
             payload = message.readNBytes(payloadLength);
             if (payload.length < payloadLength)
+            {
                 throw new IOException("Connection closed");
+            }
         }
         else
         {

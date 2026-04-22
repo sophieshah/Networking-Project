@@ -13,17 +13,23 @@ public class ConnectionHandler implements Runnable{
     public boolean isChoked = true;
     public boolean isIncoming = false;
 
-    public ConnectionHandler(Socket serverSocket, peerProcess peer) {
+    public ConnectionHandler(Socket serverSocket, peerProcess peer)
+    {
         this.serverSocket = serverSocket;
         this.peer = peer;
     }
 
-    private void closeConnection() {
-        try {
-            if (serverSocket != null && !serverSocket.isClosed()) {
+    private void closeConnection()
+    {
+        try
+        {
+            if (serverSocket != null && !serverSocket.isClosed())
+            {
                 serverSocket.close();
             }
-        } catch (IOException e) {
+        } 
+        catch (IOException e) 
+        {
             e.printStackTrace();
         }
     }
@@ -56,9 +62,13 @@ public class ConnectionHandler implements Runnable{
             this.peerId = toHandshake.getPeerID();
 
             if (isIncoming)
+            {
                 peer.logger.logConnectionFrom(peerId);
+            } 
             else
+            {
                 peer.logger.logConnectionTo(peerId);
+            }
 
             System.out.println("Handshake completed with Peer " + peerId);
 
@@ -82,7 +92,11 @@ public class ConnectionHandler implements Runnable{
                 boolean complete = true;
                 for (int bit : messageHandler.remoteBitfield)
                 {
-                    if (bit == 0) { complete = false; break; }
+                    if (bit == 0)
+                    { 
+                        complete = false;
+                        break;
+                    }
                 }
                 if (complete)
                 {

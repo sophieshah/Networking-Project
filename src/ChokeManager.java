@@ -73,7 +73,11 @@ public class ChokeManager implements Runnable
                 if (diff != 0) {
                     return diff;
                 }
-                return rand.nextInt(2) == 0 ? 1 : -1;
+               if (rand.nextInt(2) == 0)
+                {
+                    return 1;
+                }
+                return -1;
             });
         }
 
@@ -99,7 +103,9 @@ public class ChokeManager implements Runnable
                         if (bit == 0) { complete = false; break; }
                     }
                     if (complete)
+                    {
                         peer.peersWithCompleteFile.add(c.peerId);
+                    }
                 }
             }
         }
@@ -138,12 +144,16 @@ public class ChokeManager implements Runnable
             for (ConnectionHandler c : peer.connections)
             {
                 if (c.isChoked && c.remoteInterestedInMe)
+                {
                     candidates.add(c);
+                }
             }
         }
 
         if (candidates.isEmpty())
+        {
             return;
+        }
 
         Collections.shuffle(candidates);
         ConnectionHandler chosen = candidates.get(0);
@@ -164,7 +174,10 @@ public class ChokeManager implements Runnable
     {
         for (int bit : peer.bitfield)
         {
-            if (bit == 0) return false;
+            if (bit == 0)
+            {
+                return false;
+            }
         }
         return true;
     }
