@@ -16,11 +16,13 @@ public class ChokeManager implements Runnable
         new Thread(() -> {
             while(true)
             {
-                try {
+                try
+                {
                     Thread.sleep(peer.unchokingInterval * 1000);
                     updatePreferred();
                 }
-                catch (Exception e) {
+                catch (Exception e)
+                {
                     e.printStackTrace();
                 }
             }
@@ -29,11 +31,13 @@ public class ChokeManager implements Runnable
         new Thread(() -> {
             while(true)
             {
-                try {
+                try
+                {
                     Thread.sleep(peer.OptimisticUnchokingInterval * 1000);
                     updateOptimistic();
                 }
-                catch (Exception e) {
+                catch (Exception e)
+                {
                     e.printStackTrace();
                 }
             }
