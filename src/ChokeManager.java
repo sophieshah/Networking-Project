@@ -199,9 +199,16 @@ public class ChokeManager implements Runnable
             {
                 return false;
             }
-;
-            }
-     {
+        }
+        return true;
+    }
+
+    private void sendMessage(ConnectionHandler c, Message msg)
+    {
+        if (c.out != null)
+        {
+            try
+            {
                 synchronized (c.out)
                 {
                     c.out.write(msg.toByteArray());

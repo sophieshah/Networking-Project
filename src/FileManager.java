@@ -24,14 +24,16 @@ public class FileManager
     {
         int size = Math.min(peer.pieceSize, peer.fileSize - pieceIndex * peer.pieceSize);
         byte[] piece = new byte[size];
-        raf.seek((long) pieceIndex * peer.pieceSize);
+        long val = (long)pieceIndex*peer.pieceSize;
+        raf.seek(val);
         raf.readFully(piece);
         return piece;
     }
 
     public synchronized void savePiece(int pieceIndex, byte[] data) throws IOException
     {
-        raf.seek((long) pieceIndex * peer.pieceSize);
+        long val = (long) pieceIndex * peer.pieceSize;
+        raf.seek(val);
         raf.write(data);
     }
 }
