@@ -171,13 +171,13 @@ public class MessageHandler
 
     private void handlePiece(Message msg) throws IOException
     {
-        //save piece, update bitfield(savePiece), send have msg(sendHaveToNeighbors), request another piece
+        //save piece, update bitfield(savePiece), send have msg(sendHave), request another piece
         int pieceIndex = msg.getPieceIndex();
         byte[] piece = msg.getPiece();
 
         savePiece(pieceIndex, piece);
         peer.bitfield[pieceIndex] = 1;
-        sendHaveToNeighbors(pieceIndex);
+        sendHave(pieceIndex);
 
         if(!isChoked)
         {
@@ -311,7 +311,7 @@ public class MessageHandler
         peer.fileManager.savePiece(index, data);
     }
 
-    private void sendHaveToNeighbors(int pieceIndex) throws IOException
+    private void sendHave(int pieceIndex) throws IOException
     {
         ByteBuffer buffer = ByteBuffer.allocate(4);
         buffer.putInt(pieceIndex);

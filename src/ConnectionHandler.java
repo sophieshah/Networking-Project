@@ -19,7 +19,7 @@ public class ConnectionHandler implements Runnable{
         this.peer = peer;
     }
 
-    private void closeConnection()
+    private void close()
     {
         try
         {
@@ -34,7 +34,7 @@ public class ConnectionHandler implements Runnable{
         }
     }
 
-    private byte[] getBitfieldPayload()
+    private byte[] getPayload()
     {
         int numPieces = peer.numPieces;
         byte[] payload = new byte[(numPieces + 7) / 8];
@@ -72,7 +72,7 @@ public class ConnectionHandler implements Runnable{
 
             System.out.println("Handshake completed with Peer " + peerId);
 
-            byte[] bitfieldPayload = getBitfieldPayload();
+            byte[] bitfieldPayload = getPayload();
             Message bitfieldMessage = new Message(Message.MessageType.BITFIELD, bitfieldPayload);
 
             out.write(bitfieldMessage.toByteArray());
@@ -104,7 +104,7 @@ public class ConnectionHandler implements Runnable{
                     peer.checkTermination();
                 }
             }
-            closeConnection();
+            close();
         }
     }
 }
