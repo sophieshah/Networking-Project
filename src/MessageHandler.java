@@ -107,16 +107,17 @@ public class MessageHandler
             }
         }
 
-        boolean neighborComplete = true;
+        // Check if neighbor is complete
+        boolean complete = true;
         for (int i = 0; i < remoteBitfield.length; i++)
         {
             if (remoteBitfield[i] == 0)
             {
-                neighborComplete = false;
+                complete = false;
                 break;
             }
         }
-        if (neighborComplete)
+        if (complete)
         {
             peer.peersWithCompleteFile.add(parent.peerId);
             peer.checkTermination();
@@ -245,16 +246,16 @@ public class MessageHandler
 
         remoteBitfield[pieceIndex] = 1;
 
-        boolean neighborComplete = true;
+        boolean complete = true;
         for (int i = 0; i < remoteBitfield.length; i++)
         {
             if (remoteBitfield[i] == 0)
             {
-                neighborComplete = false;
+                complete = false;
                 break;
             }
         }
-        if (neighborComplete)
+        if (complete)
         {
             peer.peersWithCompleteFile.add(parent.peerId);
             peer.checkTermination();
