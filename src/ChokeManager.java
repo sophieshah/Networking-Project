@@ -91,6 +91,24 @@ public class ChokeManager implements Runnable
         {
             for (ConnectionHandler c : peer.connections)
             {
+                if (c.messageHandler != null)
+                {
+                    boolean complete = true;
+                    for (int bit : c.messageHandler.remoteBitfield)
+                    {
+                        if (bit == 0) { complete = false; break; }
+                    }
+                    if (complete)
+                        peer.peersWithCompleteFile.add(c.peerId);
+                }
+            }
+        }
+        peer.checkTermination();
+
+        synchronized (peer.connections)
+        {
+            for (ConnectionHandler c : peer.connections)
+            {
                 if (preferred.contains(c))
                 {
                     if (c.isChoked)
