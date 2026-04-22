@@ -33,7 +33,10 @@ public class PeerLogger
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < neighborIds.size(); i++)
         {
-            if (i > 0) sb.append(",");
+            if (i > 0)
+            {
+                sb.append(",");
+            }
             sb.append(neighborIds.get(i));
         }
         log("Peer " + peerId + " has the preferred neighbors " + sb.toString() + ".");

@@ -50,10 +50,13 @@ public class ChokeManager implements Runnable
 
         synchronized (peer.connections)
         {
-            for (ConnectionHandler c : peer.connections)
+            for (int i = 0; i < peer.connections.size(); i++)
             {
+                ConnectionHandler c = peer.connections.get(i);
                 if (c.remoteInterestedInMe)
+                {
                     interested.add(c);
+                }
             }
         }
 
@@ -66,9 +69,14 @@ public class ChokeManager implements Runnable
         else
         {
             Map<ConnectionHandler, Integer> rates = new HashMap<>();
-            for (ConnectionHandler c : interested)
+            for (int i = 0; i < interested.size(); i++)
             {
-                int rate = c.messageHandler != null ? c.messageHandler.getAndResetPiecesDownloaded() : 0;
+                ConnectionHandler c = interested.get(i);
+                int rate = 0;
+                if (c.messageHandler != null)
+                {
+                    rate = c.messageHandler.getAndResetPiecesDownloaded();
+                }
                 rates.put(c, rate);
             }
             Random rand = new Random();
@@ -91,20 +99,27 @@ public class ChokeManager implements Runnable
         }
 
         List<Integer> preferredIds = new ArrayList<>();
-        for (ConnectionHandler c : preferred)
-            preferredIds.add(c.peerId);
+        for (int i = 0; i < preferred.size(); i++)
+        {
+            preferredIds.add(preferred.get(i).peerId);
+        }
         peer.logger.logPreferredNeighbors(preferredIds);
 
         synchronized (peer.connections)
         {
-            for (ConnectionHandler c : peer.connections)
+            for (int i = 0; i < peer.connections.size(); i++)
             {
+                ConnectionHandler c = peer.connections.get(i);
                 if (c.messageHandler != null)
                 {
                     boolean complete = true;
-                    for (int bit : c.messageHandler.remoteBitfield)
+                    for (int j = 0; j < c.messageHandler.remoteBitfield.length; j++)
                     {
-                        if (bit == 0) { complete = false; break; }
+                        if (c.messageHandler.remoteBitfield[j] == 0)
+                        {
+                            complete = false;
+                            break;
+                        }
                     }
                     if (complete)
                     {
@@ -117,8 +132,9 @@ public class ChokeManager implements Runnable
 
         synchronized (peer.connections)
         {
-            for (ConnectionHandler c : peer.connections)
+            for (int i = 0; i < peer.connections.size(); i++)
             {
+                ConnectionHandler c = peer.connections.get(i);
                 if (preferred.contains(c))
                 {
                     if (c.isChoked)
@@ -145,8 +161,9 @@ public class ChokeManager implements Runnable
 
         synchronized (peer.connections)
         {
-            for (ConnectionHandler c : peer.connections)
+            for (int i = 0; i < peer.connections.size(); i++)
             {
+                ConnectionHandler c = peer.connections.get(i);
                 if (c.isChoked && c.remoteInterestedInMe)
                 {
                     candidates.add(c);
@@ -176,9 +193,9 @@ public class ChokeManager implements Runnable
 
     private boolean hasCompleteFile()
     {
-        for (int bit : peer.bitfield)
+        for (int i = 0; i < peer.bitfield.length; i++)
         {
-            if (bit == 0)
+            if (peer.bitfield[i] == 0)
             {
                 return false;
             }

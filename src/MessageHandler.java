@@ -108,11 +108,11 @@ public class MessageHandler
         }
 
         boolean neighborComplete = true;
-        for (int bit : remoteBitfield)
+        for (int i = 0; i < remoteBitfield.length; i++)
         {
-            if (bit == 0)
-            { 
-                neighborComplete = false; 
+            if (remoteBitfield[i] == 0)
+            {
+                neighborComplete = false;
                 break;
             }
         }
@@ -198,7 +198,13 @@ public class MessageHandler
         incrementDownload();
 
         int count = 0;
-        for (int bit : peer.bitfield) if (bit == 1) count++;
+        for (int i = 0; i < peer.bitfield.length; i++)
+        {
+            if (peer.bitfield[i] == 1)
+            {
+                count++;
+            }
+        }
         peer.logger.logPieceDownloaded(parent.peerId, pieceIndex, count);
 
         if (count == peer.numPieces)
@@ -240,9 +246,9 @@ public class MessageHandler
         remoteBitfield[pieceIndex] = 1;
 
         boolean neighborComplete = true;
-        for (int bit : remoteBitfield)
+        for (int i = 0; i < remoteBitfield.length; i++)
         {
-            if (bit == 0)
+            if (remoteBitfield[i] == 0)
             {
                 neighborComplete = false;
                 break;
@@ -313,8 +319,9 @@ public class MessageHandler
         
         byte[] msgBytes = haveMsg.toByteArray();
 
-        for(ConnectionHandler c : peer.connections)
+        for (int i = 0; i < peer.connections.size(); i++)
         {
+            ConnectionHandler c = peer.connections.get(i);
             if (c.out != null)
             {
                 synchronized (c.out)

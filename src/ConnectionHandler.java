@@ -90,10 +90,10 @@ public class ConnectionHandler implements Runnable{
             if (messageHandler != null)
             {
                 boolean complete = true;
-                for (int bit : messageHandler.remoteBitfield)
+                for (int j = 0; j < messageHandler.remoteBitfield.length; j++)
                 {
-                    if (bit == 0)
-                    { 
+                    if (messageHandler.remoteBitfield[j] == 0)
+                    {
                         complete = false;
                         break;
                     }
