@@ -18,26 +18,26 @@ public class PeerLogger
         writer.flush();
     }
 
-    public void logConnectionTo(int remotePeerId)
+    public void logTo(int remotePeerId)
     {
         log("Peer " + peerId + " makes a connection to Peer " + remotePeerId + ".");
     }
 
-    public void logConnectionFrom(int remotePeerId)
+    public void logFrom(int remotePeerId)
     {
         log("Peer " + peerId + " is connected from Peer " + remotePeerId + ".");
     }
 
-    public void logPreferredNeighbors(List<Integer> neighborIds)
+    public void logPreferredNeighbors(List<Integer> neighbors)
     {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < neighborIds.size(); i++)
+        for (int i = 0; i < neighbors.size(); i++)
         {
             if (i > 0)
             {
                 sb.append(",");
             }
-            sb.append(neighborIds.get(i));
+            sb.append(neighbors.get(i));
         }
         log("Peer " + peerId + " has the preferred neighbors " + sb.toString() + ".");
     }

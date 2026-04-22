@@ -21,16 +21,16 @@ public class Message
     private byte[] payload;
 
     // Constructor for have, bitfield, request, and piece messages
-    public Message(MessageType messageType, byte[] payload) {
-        this.type = (byte) messageType.ordinal();
+    public Message(MessageType msgType, byte[] payload) {
+        this.type = (byte) msgType.ordinal();
         this.payload = payload;
         this.length = 1 + this.payload.length;
     }
 
     // Constructor for choke, unchoke, interested, and not interested messages
-    public Message(MessageType messageType)
+    public Message(MessageType msgType)
     {
-        this.type = (byte) messageType.ordinal();
+        this.type = (byte) msgType.ordinal();
         this.payload = new byte[0];
         this.length = 1 + this.payload.length;
     }
@@ -61,16 +61,16 @@ public class Message
         return buffer.array();
     }
 
-    public static Message unpack(InputStream message) throws IOException
+    public static Message unpack(InputStream msg) throws IOException
     {
-        byte[] byteLength = message.readNBytes(4);
+        byte[] byteLength = msg.readNBytes(4);
         if (byteLength.length < 4)
         {
             throw new IOException("Connection closed");
         }
         int length = ByteBuffer.wrap(byteLength).getInt();
 
-        byte[] typeBytes = message.readNBytes(1);
+        byte[] typeBytes = msg.readNBytes(1);
         if (typeBytes.length < 1)
         {
             throw new IOException("Connection closed");
@@ -81,7 +81,7 @@ public class Message
         byte[] payload;
         if (payloadLength > 0)
         {
-            payload = message.readNBytes(payloadLength);
+            payload = msg.readNBytes(payloadLength);
             if (payload.length < payloadLength)
             {
                 throw new IOException("Connection closed");

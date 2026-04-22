@@ -63,11 +63,11 @@ public class ConnectionHandler implements Runnable{
 
             if (isIncoming)
             {
-                peer.logger.logConnectionFrom(peerId);
+                peer.logger.logFrom(peerId);
             } 
             else
             {
-                peer.logger.logConnectionTo(peerId);
+                peer.logger.logTo(peerId);
             }
 
             System.out.println("Handshake completed with Peer " + peerId);
