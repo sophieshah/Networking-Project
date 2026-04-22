@@ -8,14 +8,14 @@ public class FileManager
     public FileManager(peerProcess peer) throws IOException
     {
         this.peer = peer;
-        String filePath = "peer_" + peer.peerId + "/" + peer.fileName;
-        File file = new File(filePath);
+        String path = "peer_" + peer.peerId + "/" + peer.fileName;
+        File file = new File(path);
         file.getParentFile().mkdirs();
         if (!file.exists())
         {
-            RandomAccessFile init = new RandomAccessFile(file, "rw");
-            init.setLength(peer.fileSize);
-            init.close();
+            RandomAccessFile r = new RandomAccessFile(file, "rw");
+            r.setLength(peer.fileSize);
+            r.close();
         }
         this.raf = new RandomAccessFile(file, "rw");
     }
